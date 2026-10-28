@@ -1,6 +1,6 @@
 # TryPad
 
-A lightweight, offline **Notion-style notes app** that runs entirely in the browser (HTML + CSS + JS only).
+A lightweight, offline **Notion-style notes app** that runs entirely in the browser (single HTML file).
 
 Notes are saved as **Markdown (`.md`) files** on your local disk, with a folder structure that mirrors page hierarchy.
 
@@ -13,6 +13,7 @@ Notes are saved as **Markdown (`.md`) files** on your local disk, with a folder 
 - Tables with add/remove row & column, **Tab** to move between cells
 - Search across all pages and sub-pages
 - Resizable left sidebar
+- **Dark mode** (toggle 🌙 / ☀️ at top-left of the sidebar; preference is remembered)
 - Local folder storage via File System Access API (Chrome / Edge)
 - Remembers last folder (one-click reconnect)
 
@@ -23,16 +24,17 @@ Notes are saved as **Markdown (`.md`) files** on your local disk, with a folder 
 
 ## Usage
 
-1. Open `index.html` in Chrome or Edge
-2. Click **Select Folder…** and choose a folder for your notes
-3. Create pages, write, insert images/tables
-4. Next time you open the app, click **Reconnect** (or it may auto-connect if permission is still granted)
+1. Open `index.html` in Chrome or Edge  
+2. Click **Select Folder…** and choose a folder for your notes  
+3. Create pages, write, insert images/tables  
+4. Use the **moon/sun button** (top-left) to switch light / dark mode  
+5. Next time you open the app, click **Reconnect** (or it may auto-connect if permission is still granted)
 
 ### Suggested layout
 
 ```text
 TryPad/
-  index.html          ← this app
+  index.html          ← this app (single file)
   Notes/              ← select this folder in the app
     Welcome.md
     Projects.md
