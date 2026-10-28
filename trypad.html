@@ -15,6 +15,30 @@
       --accent: #2383e2;
       --hover: #efeee9;
       --danger: #e03e3e;
+      --search-bg: #ffffff;
+      --code-bg: #f1efe8;
+      --overlay-bg: rgba(247,246,243,0.95);
+      --scroll-thumb: #d3d1c9;
+      --tree-active: #e8e7e2;
+      --th-bg: #f1efe8;
+    }
+
+    [data-theme="dark"] {
+      --bg: #191919;
+      --sidebar: #202020;
+      --surface: #191919;
+      --border: #373737;
+      --text: #e3e3e3;
+      --muted: #9b9b9b;
+      --accent: #4ea1ff;
+      --hover: #2a2a2a;
+      --danger: #ff6b6b;
+      --search-bg: #2a2a2a;
+      --code-bg: #2a2a2a;
+      --overlay-bg: rgba(25,25,25,0.96);
+      --scroll-thumb: #555;
+      --tree-active: #2f2f2f;
+      --th-bg: #2a2a2a;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -90,6 +114,23 @@
     .btn-icon:hover { background: var(--hover); color: var(--text); }
     .btn-icon:disabled { opacity: 0.4; cursor: not-allowed; }
 
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: var(--text);
+      flex-shrink: 0;
+      transition: background 0.12s;
+    }
+    .theme-toggle:hover { background: var(--hover); }
+
     .folder-bar {
       padding: 8px 10px;
       border-bottom: 1px solid var(--border);
@@ -128,7 +169,7 @@
       border-radius: 6px;
       padding: 7px 10px 7px 30px;
       font-size: 13px;
-      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%23787774' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 10px center;
+      background: var(--search-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%23787774' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 10px center;
       color: var(--text);
       outline: none;
     }
@@ -155,7 +196,7 @@
       min-height: 30px;
     }
     .tree-row:hover { background: var(--hover); }
-    .tree-row.active { background: #e8e7e2; font-weight: 500; }
+    .tree-row.active { background: var(--tree-active); font-weight: 500; }
 
     .toggle {
       width: 18px;
@@ -213,7 +254,7 @@
       position: absolute;
       display: none;
       gap: 4px;
-      background: #fff;
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 4px 6px;
@@ -346,14 +387,14 @@
       margin: 0.8em 0;
     }
     #editor code {
-      background: #f1efe8;
+      background: var(--code-bg);
       padding: 0.12em 0.35em;
       border-radius: 3px;
       font-size: 0.9em;
       font-family: "SF Mono", "Fira Code", Consolas, monospace;
     }
     #editor pre {
-      background: #f1efe8;
+      background: var(--code-bg);
       padding: 12px 14px;
       border-radius: 6px;
       overflow-x: auto;
@@ -409,7 +450,7 @@
       vertical-align: top;
       word-break: break-word;
     }
-    #editor th { background: #f1efe8; font-weight: 600; }
+    #editor th { background: var(--th-bg); font-weight: 600; }
 
     .empty-state {
       display: flex;
@@ -427,7 +468,7 @@
     .no-folder-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(247,246,243,0.95);
+      background: var(--overlay-bg);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -466,12 +507,13 @@
 
     ::-webkit-scrollbar { width: 7px; height: 7px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #d3d1c9; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 4px; }
   </style>
 </head>
 <body>
   <aside class="sidebar">
     <div class="sidebar-header">
+      <button type="button" class="theme-toggle" id="btnTheme" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
       <h1>📝 Pages</h1>
       <button class="btn-icon" id="btnNewRoot" title="New page" disabled>＋</button>
     </div>
@@ -1662,6 +1704,33 @@
         document.getElementById("searchInput").focus();
       }
     });
+
+
+    // ---------- Dark mode ----------
+    (function initTheme() {
+      const btn = document.getElementById("btnTheme");
+      const saved = localStorage.getItem("trypad-theme");
+      const preferDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const theme = saved || (preferDark ? "dark" : "light");
+      applyTheme(theme);
+      btn.addEventListener("click", () => {
+        const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        applyTheme(next);
+        localStorage.setItem("trypad-theme", next);
+      });
+    })();
+
+    function applyTheme(theme) {
+      if (theme === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+        document.getElementById("btnTheme").textContent = "☀️";
+        document.getElementById("btnTheme").title = "Switch to light mode";
+      } else {
+        document.documentElement.removeAttribute("data-theme");
+        document.getElementById("btnTheme").textContent = "🌙";
+        document.getElementById("btnTheme").title = "Switch to dark mode";
+      }
+    }
 
     // ---------- Init ----------
     if (!window.showDirectoryPicker) {
