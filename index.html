@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TryPad</title>
+  <style>
+    :root {
+      --bg: #f7f6f3;
+      --sidebar: #f1efe8;
+      --surface: #ffffff;
+      --border: #e3e1d9;
+      --text: #37352f;
+      --muted: #787774;
+      --accent: #2383e2;
+      --hover: #efeee9;
+      --danger: #e03e3e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 280px;
+      min-width: 180px;
+      max-width: 60vw;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .sidebar-resizer {
+      position: absolute;
+      top: 0;
+      right: -3px;
+      width: 6px;
+      height: 100%;
+      cursor: col-resize;
+      z-index: 30;
+      background: transparent;
+    }
+    .sidebar-resizer:hover,
+    .sidebar-resizer.dragging {
+      background: var(--accent);
+      opacity: 0.35;
+    }
+
+    .sidebar-header {
+      padding: 14px 12px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      gap: 6px;
+    }
+
+    .sidebar-header h1 {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      flex: 1;
+    }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      width: 26px;
+      height: 26px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 15px;
+      transition: background 0.12s;
+      flex-shrink: 0;
+    }
+    .btn-icon:hover { background: var(--hover); color: var(--text); }
+    .btn-icon:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .folder-bar {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .folder-bar .folder-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+      font-weight: 500;
+    }
+    .folder-bar button {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .folder-bar button:hover { background: var(--hover); }
+
+    .search-bar {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .search-bar input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 10px 7px 30px;
+      font-size: 13px;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%23787774' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 10px center;
+      color: var(--text);
+      outline: none;
+    }
+    .search-bar input:focus { border-color: var(--accent); }
+    .search-bar input::placeholder { color: #b0aea6; }
+
+    .notes-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 4px 20px;
+    }
+    .tree-item.search-hidden { display: none; }
+
+    .tree-item { user-select: none; }
+
+    .tree-row {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 4px 6px 4px 4px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 13.5px;
+      min-height: 30px;
+    }
+    .tree-row:hover { background: var(--hover); }
+    .tree-row.active { background: #e8e7e2; font-weight: 500; }
+
+    .toggle {
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--muted);
+      font-size: 10px;
+      border-radius: 3px;
+      transition: transform 0.15s;
+    }
+    .toggle:hover { background: rgba(0,0,0,0.06); }
+    .toggle.collapsed { transform: rotate(-90deg); }
+    .toggle.hidden { visibility: hidden; }
+
+    .tree-title {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      padding: 2px 4px;
+    }
+
+    .tree-actions {
+      display: none;
+      gap: 1px;
+      flex-shrink: 0;
+    }
+    .tree-row:hover .tree-actions { display: flex; }
+
+    .tree-actions button {
+      background: none;
+      border: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 3px;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tree-actions button:hover { background: rgba(0,0,0,0.08); color: var(--text); }
+    .tree-actions .btn-del:hover { background: #fce8e8; color: var(--danger); }
+    .tree-actions .btn-move { font-size: 11px; }
+
+    .children { margin-left: 12px; padding-left: 4px; }
+    .children.collapsed { display: none; }
+
+    /* Table floating toolbar */
+    .table-toolbar {
+      position: absolute;
+      display: none;
+      gap: 4px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 6px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+      z-index: 50;
+      align-items: center;
+    }
+    .table-toolbar.show { display: flex; }
+    .table-toolbar button {
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .table-toolbar button:hover {
+      background: var(--hover);
+      border-color: var(--border);
+    }
+    .table-toolbar .sep {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+      margin: 0 2px;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: var(--surface);
+      position: relative;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .toolbar button,
+    .toolbar label {
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: 5px 9px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text);
+      transition: all 0.12s;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .toolbar button:hover,
+    .toolbar label:hover {
+      background: var(--hover);
+      border-color: var(--border);
+    }
+    .toolbar .divider {
+      width: 1px;
+      height: 18px;
+      background: var(--border);
+      margin: 0 4px;
+    }
+
+    .status-bar {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 4px 16px;
+      border-bottom: 1px solid var(--border);
+      display: none;
+    }
+    .status-bar.show { display: block; }
+    .status-bar.ok { color: #0f7b0f; }
+    .status-bar.err { color: var(--danger); }
+
+    .editor-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 36px 56px 80px;
+    }
+
+    .title-input {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 20px;
+      background: transparent;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+    }
+    .title-input::placeholder { color: #c4c2bc; }
+
+    #editor {
+      min-height: calc(100vh - 260px);
+      outline: none;
+      font-size: 16px;
+      line-height: 1.75;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    #editor:empty:before {
+      content: attr(data-placeholder);
+      color: #c4c2bc;
+      pointer-events: none;
+    }
+
+    #editor h1 { font-size: 1.9em; font-weight: 700; margin: 1.1em 0 0.4em; line-height: 1.25; }
+    #editor h2 { font-size: 1.45em; font-weight: 650; margin: 1em 0 0.35em; line-height: 1.3; }
+    #editor h3 { font-size: 1.2em; font-weight: 600; margin: 0.9em 0 0.3em; }
+    #editor p { margin: 0.4em 0; }
+    #editor ul, #editor ol { margin: 0.5em 0; padding-left: 1.6em; }
+    #editor li { margin: 0.15em 0; }
+    #editor blockquote {
+      border-left: 3px solid var(--border);
+      padding-left: 1em;
+      color: var(--muted);
+      margin: 0.8em 0;
+    }
+    #editor code {
+      background: #f1efe8;
+      padding: 0.12em 0.35em;
+      border-radius: 3px;
+      font-size: 0.9em;
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+    }
+    #editor pre {
+      background: #f1efe8;
+      padding: 12px 14px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 0.8em 0;
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: 0.9em;
+    }
+    #editor pre code { background: none; padding: 0; }
+    #editor a { color: var(--accent); text-decoration: underline; }
+    #editor hr { border: none; border-top: 1px solid var(--border); margin: 1.4em 0; }
+
+    #editor img {
+      max-width: 100%;
+      border-radius: 6px;
+      margin: 0.8em 0;
+      display: block;
+      cursor: pointer;
+    }
+    .img-wrapper {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+      margin: 0.8em 0;
+      vertical-align: top;
+    }
+    .img-wrapper img { margin: 0; display: block; max-width: 100%; }
+    .img-wrapper .resize-handle {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 14px;
+      height: 14px;
+      background: var(--accent);
+      border: 2px solid #fff;
+      border-radius: 50%;
+      cursor: nwse-resize;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      z-index: 10;
+      display: none;
+    }
+    .img-wrapper.selected .resize-handle { display: block; }
+
+    #editor table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1em 0;
+      table-layout: fixed;
+    }
+    #editor th, #editor td {
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      min-width: 60px;
+      vertical-align: top;
+      word-break: break-word;
+    }
+    #editor th { background: #f1efe8; font-weight: 600; }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--muted);
+      text-align: center;
+      padding: 40px;
+    }
+    .empty-state h2 { font-size: 18px; margin-bottom: 6px; color: var(--text); }
+    .empty-state p { font-size: 14px; max-width: 340px; line-height: 1.5; }
+
+    .no-folder-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(247,246,243,0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      text-align: center;
+      padding: 40px;
+    }
+    .no-folder-overlay h2 { font-size: 20px; margin-bottom: 8px; }
+    .no-folder-overlay p { font-size: 14px; color: var(--muted); max-width: 380px; margin-bottom: 20px; line-height: 1.55; }
+    .no-folder-overlay button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .no-folder-overlay button:hover { opacity: 0.92; }
+
+    @media (max-width: 700px) {
+      .sidebar { width: 220px; }
+      .editor-area { padding: 24px 20px 50px; }
+      .title-input { font-size: 28px; }
+    }
+    @media (max-width: 520px) {
+      body { flex-direction: column; }
+      .sidebar {
+        width: 100%;
+        height: 200px;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+    }
+
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #d3d1c9; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1>📝 Pages</h1>
+      <button class="btn-icon" id="btnNewRoot" title="New page" disabled>＋</button>
+    </div>
+    <div class="folder-bar">
+      <span class="folder-name" id="folderName">No folder selected</span>
+      <button id="btnChooseFolder">Folder</button>
+    </div>
+    <div class="search-bar">
+      <input type="search" id="searchInput" placeholder="Search pages…" autocomplete="off" />
+    </div>
+    <div class="notes-list" id="notesList"></div>
+    <div class="sidebar-resizer" id="sidebarResizer" title="Drag to resize"></div>
+  </aside>
+
+  <main class="main">
+    <div class="toolbar" id="toolbar" style="display: none;">
+      <button type="button" data-cmd="bold" title="Bold">𝐁</button>
+      <button type="button" data-cmd="italic" title="Italic">𝐼</button>
+      <button type="button" data-cmd="strikeThrough" title="Strikethrough">S̶</button>
+      <div class="divider"></div>
+      <button type="button" data-cmd="formatBlock" data-value="h1">H1</button>
+      <button type="button" data-cmd="formatBlock" data-value="h2">H2</button>
+      <button type="button" data-cmd="formatBlock" data-value="h3">H3</button>
+      <button type="button" data-cmd="formatBlock" data-value="p">P</button>
+      <div class="divider"></div>
+      <button type="button" data-cmd="insertUnorderedList">• List</button>
+      <button type="button" data-cmd="insertOrderedList">1. List</button>
+      <button type="button" data-cmd="formatBlock" data-value="blockquote">“ Quote</button>
+      <div class="divider"></div>
+      <button type="button" id="btnTable">▦ Table</button>
+      <div class="divider"></div>
+      <button type="button" data-cmd="removeFormat">✕ Clear</button>
+      <div class="divider"></div>
+      <label>🖼 Image<input type="file" id="imageInput" accept="image/*" hidden /></label>
+    </div>
+
+    <div class="status-bar" id="statusBar"></div>
+
+    <div class="editor-area" id="editorArea">
+      <div class="empty-state" id="emptyState">
+        <h2>No page selected</h2>
+        <p>Select a page from the sidebar or create a new one.</p>
+      </div>
+      <div id="editorContent" style="display: none;">
+        <input type="text" class="title-input" id="titleInput" placeholder="Untitled" autocomplete="off" />
+        <div id="editor" contenteditable="true"
+             data-placeholder="Type here…  Try:  - + space  for bullet,  # + space  for heading"
+             spellcheck="true"></div>
+      </div>
+    </div>
+
+    <div class="no-folder-overlay" id="noFolderOverlay">
+      <h2 id="overlayTitle">Choose a folder to store your notes</h2>
+      <p id="overlayDesc">
+        Each page is saved as a Markdown (<code>.md</code>) file on your computer.<br>
+        Sub-pages become folders inside the parent page.<br><br>
+        Use <strong>Chrome</strong> or <strong>Edge</strong>
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+        <button id="btnReconnect" style="display:none;background:#0f7b0f;">Reconnect last folder</button>
+        <button id="btnChooseFolderMain">Select Folder…</button>
+      </div>
+    </div>
+
+    <!-- Floating table toolbar -->
+    <div class="table-toolbar" id="tableToolbar">
+      <button type="button" data-table="add-row">＋ Row</button>
+      <button type="button" data-table="del-row">− Row</button>
+      <span class="sep"></span>
+      <button type="button" data-table="add-col">＋ Col</button>
+      <button type="button" data-table="del-col">− Col</button>
+    </div>
+  </main>
+
+  <script>
+    let dirHandle = null;
+    let notes = [];
+    let currentId = null;
+    let saveTimer = null;
+    let selectedImgWrapper = null;
+    let isResizing = false;
+    let resizeStartX = 0;
+    let resizeStartWidth = 0;
+    let searchQuery = "";
+
+    // ---------- IndexedDB: remember last folder ----------
+    const IDB_NAME = "notion-notepad-db";
+    const IDB_STORE = "handles";
+
+    function openIDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) {
+            db.createObjectStore(IDB_STORE);
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function saveDirHandle(handle) {
+      try {
+        const db = await openIDB();
+        const tx = db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).put(handle, "notesFolder");
+        await new Promise((res, rej) => {
+          tx.oncomplete = res;
+          tx.onerror = () => rej(tx.error);
+        });
+        db.close();
+      } catch (e) {
+        console.warn("Could not save folder handle", e);
+      }
+    }
+
+    async function loadDirHandle() {
+      try {
+        const db = await openIDB();
+        const tx = db.transaction(IDB_STORE, "readonly");
+        const req = tx.objectStore(IDB_STORE).get("notesFolder");
+        const handle = await new Promise((res, rej) => {
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+        db.close();
+        return handle || null;
+      } catch (e) {
+        console.warn("Could not load folder handle", e);
+        return null;
+      }
+    }
+
+    function showStatus(msg, type = "") {
+      const bar = document.getElementById("statusBar");
+      bar.textContent = msg;
+      bar.className = "status-bar show " + type;
+      if (type === "ok") setTimeout(() => bar.classList.remove("show"), 2200);
+    }
+
+    function sanitizeFilename(name) {
+      return (name || "Untitled")
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, "-")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 80) || "Untitled";
+    }
+
+    function uid() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+
+    // ---------- HTML ↔ Markdown ----------
+    function htmlToMarkdown(html) {
+      if (!html) return "";
+      const div = document.createElement("div");
+      div.innerHTML = html;
+      div.querySelectorAll(".resize-handle").forEach(el => el.remove());
+      div.querySelectorAll(".img-wrapper").forEach(w => {
+        const img = w.querySelector("img");
+        if (img) w.replaceWith(img);
+      });
+
+      function walk(node) {
+        if (node.nodeType === 3) return node.textContent;
+        if (node.nodeType !== 1) return "";
+        const tag = node.tagName.toLowerCase();
+        const children = Array.from(node.childNodes).map(walk).join("");
+
+        switch (tag) {
+          case "h1": return `# ${children.trim()}\n\n`;
+          case "h2": return `## ${children.trim()}\n\n`;
+          case "h3": return `### ${children.trim()}\n\n`;
+          case "p":  return children.trim() ? children.trim() + "\n\n" : "\n";
+          case "br": return "\n";
+          case "strong": case "b": return `**${children}**`;
+          case "em": case "i": return `*${children}*`;
+          case "s": case "strike": case "del": return `~~${children}~~`;
+          case "code": return node.parentElement?.tagName === "PRE" ? children : "`" + children + "`";
+          case "pre": return "```\n" + children.trim() + "\n```\n\n";
+          case "blockquote": return children.trim().split("\n").map(l => "> " + l).join("\n") + "\n\n";
+          case "ul": return Array.from(node.children).map(li => "- " + walk(li).trim()).join("\n") + "\n\n";
+          case "ol": return Array.from(node.children).map((li, i) => `${i+1}. ` + walk(li).trim()).join("\n") + "\n\n";
+          case "li": return children;
+          case "a": return `[${children}](${node.getAttribute("href") || ""})`;
+          case "img": {
+            const src = node.getAttribute("src") || "";
+            const alt = node.getAttribute("alt") || "";
+            // Preserve resized width so it survives save/reopen
+            const w = node.style.width || node.getAttribute("width") || "";
+            if (w) {
+              return `<img src="${src}" alt="${alt}" style="width:${w};height:auto" />\n\n`;
+            }
+            return `![${alt}](${src})\n\n`;
+          }
+          case "hr": return "---\n\n";
+          case "table": {
+            const rows = Array.from(node.querySelectorAll("tr"));
+            if (!rows.length) return "";
+            let md = "";
+            rows.forEach((row, ri) => {
+              const cells = Array.from(row.querySelectorAll("th,td")).map(c => walk(c).trim().replace(/\|/g, "\\|"));
+              md += "| " + cells.join(" | ") + " |\n";
+              if (ri === 0) md += "| " + cells.map(() => "---").join(" | ") + " |\n";
+            });
+            return md + "\n";
+          }
+          default: return children;
+        }
+      }
+      return walk(div).replace(/\n{3,}/g, "\n\n").trim() + "\n";
+    }
+
+    function markdownToHtml(md) {
+      if (!md) return "";
+
+      // Protect raw HTML <img ...> tags (used when width is saved) before escaping
+      const htmlImgs = [];
+      let text = md.replace(/<img\b[^>]*\/?>/gi, (tag) => {
+        htmlImgs.push(tag);
+        return `%%HTMLIMG${htmlImgs.length - 1}%%`;
+      });
+
+      // Escape remaining HTML
+      text = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+      // Code blocks (protect from other rules)
+      const codeBlocks = [];
+      text = text.replace(/```[\w]*\n([\s\S]*?)```/g, (_, code) => {
+        codeBlocks.push(`<pre><code>${code.trim()}</code></pre>`);
+        return `\n%%CODEBLOCK${codeBlocks.length - 1}%%\n`;
+      });
+
+      // GFM tables: lines starting with |
+      // Match consecutive table lines (header + separator + body)
+      text = text.replace(
+        /((?:^\|.+\|[ \t]*\n)+)/gm,
+        (block) => {
+          const lines = block.trim().split("\n").filter(l => l.trim());
+          if (lines.length < 2) return block;
+
+          // Check second line is separator (|---|---|)
+          const sepRe = /^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/;
+          if (!sepRe.test(lines[1])) return block;
+
+          function parseRow(line) {
+            // Remove leading/trailing |
+            let s = line.trim();
+            if (s.startsWith("|")) s = s.slice(1);
+            if (s.endsWith("|")) s = s.slice(0, -1);
+            return s.split("|").map(c => c.trim());
+          }
+
+          const header = parseRow(lines[0]);
+          const bodyRows = lines.slice(2).map(parseRow);
+
+          let table = "<table><tbody>";
+          table += "<tr>" + header.map(c => `<th>${inlineFormat(c)}</th>`).join("") + "</tr>";
+          bodyRows.forEach(cells => {
+            // Pad if needed
+            while (cells.length < header.length) cells.push("");
+            table += "<tr>" + cells.slice(0, header.length).map(c => `<td>${inlineFormat(c) || "<br>"}</td>`).join("") + "</tr>";
+          });
+          table += "</tbody></table>";
+          return "\n" + table + "\n";
+        }
+      );
+
+      // Inline helpers used above and below
+      function inlineFormat(s) {
+        if (!s) return "";
+        s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />');
+        s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+        s = s.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
+        s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+        s = s.replace(/\*(.+?)\*/g, "<em>$1</em>");
+        s = s.replace(/~~(.+?)~~/g, "<del>$1</del>");
+        s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
+        return s;
+      }
+
+      // Markdown images (no width) & links
+      // Support long data: URLs which may contain characters; match until last )
+      text = text.replace(/!\[([^\]]*)\]\((.+?)\)/g, '<img src="$2" alt="$1" />');
+      text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+      // Headings
+      text = text.replace(/^### (.*)$/gm, "<h3>$1</h3>");
+      text = text.replace(/^## (.*)$/gm, "<h2>$1</h2>");
+      text = text.replace(/^# (.*)$/gm, "<h1>$1</h1>");
+
+      // HR
+      text = text.replace(/^---$/gm, "<hr>");
+
+      // Blockquotes
+      text = text.replace(/^&gt; (.*)$/gm, "<blockquote>$1</blockquote>");
+
+      // Bold / italic / strike / code (remaining)
+      text = text.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
+      text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      text = text.replace(/\*(.+?)\*/g, "<em>$1</em>");
+      text = text.replace(/~~(.+?)~~/g, "<del>$1</del>");
+      text = text.replace(/`([^`]+)`/g, "<code>$1</code>");
+
+      // Lists
+      text = text.replace(/^\s*[-*] (.*)$/gm, "<li>$1</li>");
+      text = text.replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`);
+      text = text.replace(/^\s*\d+\. (.*)$/gm, "<li>$1</li>");
+
+      // Restore code blocks
+      text = text.replace(/%%CODEBLOCK(\d+)%%/g, (_, i) => codeBlocks[Number(i)]);
+
+      // Restore HTML images (with width preserved)
+      text = text.replace(/%%HTMLIMG(\d+)%%/g, (_, i) => htmlImgs[Number(i)]);
+
+      // Paragraphs
+      text = text.split(/\n\n+/).map(block => {
+        const t = block.trim();
+        if (!t) return "";
+        if (/^<(h[1-6]|ul|ol|pre|blockquote|hr|table|li|img)/.test(t)) return t;
+        if (/^%%HTMLIMG\d+%%$/.test(t)) return t;
+        return `<p>${block.replace(/\n/g, "<br>")}</p>`;
+      }).join("\n");
+
+      return text;
+    }
+
+    // ---------- File System ----------
+    function hideOverlayAndEnable(handle) {
+      dirHandle = handle;
+      document.getElementById("folderName").textContent = handle.name;
+      document.getElementById("noFolderOverlay").style.display = "none";
+      document.getElementById("btnNewRoot").disabled = false;
+    }
+
+    async function chooseFolder() {
+      try {
+        const handle = await window.showDirectoryPicker({ mode: "readwrite", id: "notion-notes-folder" });
+        await saveDirHandle(handle);
+        hideOverlayAndEnable(handle);
+        await loadFromFolder();
+        showStatus("Folder connected: " + handle.name, "ok");
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          showStatus("Cannot open folder: " + err.message, "err");
+          console.error(err);
+        }
+      }
+    }
+
+    // Connect using a previously saved handle (must be called from a user click
+    // if permission is not already granted — browsers block silent access).
+    async function connectWithHandle(handle) {
+      if (!handle) return false;
+      const opts = { mode: "readwrite" };
+      try {
+        let perm = await handle.queryPermission(opts);
+        if (perm !== "granted") {
+          perm = await handle.requestPermission(opts);
+        }
+        if (perm !== "granted") {
+          showStatus("Permission denied for folder", "err");
+          return false;
+        }
+        await saveDirHandle(handle);
+        hideOverlayAndEnable(handle);
+        await loadFromFolder();
+        showStatus("Connected: " + handle.name, "ok");
+        return true;
+      } catch (e) {
+        console.warn("connectWithHandle failed", e);
+        showStatus("Could not open folder: " + (e.message || e.name), "err");
+        return false;
+      }
+    }
+
+    // On page load: if we already have permission, auto-open.
+    // If we only have a remembered handle, show a one-click Reconnect button.
+    async function tryRestoreFolder() {
+      if (!window.showDirectoryPicker) return false;
+      const handle = await loadDirHandle();
+      if (!handle) return false;
+
+      try {
+        const perm = await handle.queryPermission({ mode: "readwrite" });
+        if (perm === "granted") {
+          // Silent restore works
+          return await connectWithHandle(handle);
+        }
+
+        // Permission not granted yet — need a user click
+        const overlay = document.getElementById("noFolderOverlay");
+        document.getElementById("overlayTitle").textContent = "Reconnect to your notes";
+        document.getElementById("overlayDesc").innerHTML =
+          `Last folder: <strong>${escapeHtml(handle.name)}</strong><br><br>` +
+          `Click <strong>Reconnect</strong> to open it again (browser security requires one click).<br>` +
+          `Or choose a different folder.`;
+        const btn = document.getElementById("btnReconnect");
+        btn.style.display = "inline-block";
+        btn.textContent = "Reconnect “" + handle.name + "”";
+        btn.onclick = async () => {
+          btn.disabled = true;
+          btn.textContent = "Opening…";
+          const ok = await connectWithHandle(handle);
+          if (!ok) {
+            btn.disabled = false;
+            btn.textContent = "Reconnect “" + handle.name + "”";
+          }
+        };
+        overlay.style.display = "flex";
+        return false;
+      } catch (e) {
+        console.warn("tryRestoreFolder", e);
+        return false;
+      }
+    }
+
+    async function ensurePermission() {
+      if (!dirHandle) return false;
+      const opts = { mode: "readwrite" };
+      if ((await dirHandle.queryPermission(opts)) === "granted") return true;
+      if ((await dirHandle.requestPermission(opts)) === "granted") return true;
+      return false;
+    }
+
+    async function getParentDirHandle(note) {
+      if (!note.parentId) return dirHandle;
+      const chain = [];
+      let cur = note;
+      while (cur && cur.parentId) {
+        const parent = notes.find(n => n.id === cur.parentId);
+        if (!parent) break;
+        chain.unshift(parent);
+        cur = parent;
+      }
+      let handle = dirHandle;
+      for (const p of chain) {
+        const folderName = sanitizeFilename(p.title || "Untitled");
+        try {
+          handle = await handle.getDirectoryHandle(folderName, { create: true });
+        } catch (e) {
+          console.error("Cannot create/open folder", folderName, e);
+          return null;
+        }
+      }
+      return handle;
+    }
+
+    async function saveNoteToFile(note) {
+      if (!dirHandle || !(await ensurePermission())) {
+        showStatus("No write permission for folder", "err");
+        return;
+      }
+      try {
+        const parentDir = await getParentDirHandle(note);
+        if (!parentDir) return;
+        const filename = sanitizeFilename(note.title || "Untitled") + ".md";
+        const fileHandle = await parentDir.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        const bodyMd = htmlToMarkdown(note.content || "");
+        const fullMd = `# ${note.title || "Untitled"}\n\n${bodyMd}`;
+        await writable.write(fullMd);
+        await writable.close();
+        note._filename = filename;
+        showStatus("Saved · " + filename, "ok");
+      } catch (err) {
+        console.error(err);
+        showStatus("Save failed: " + err.message, "err");
+      }
+    }
+
+    async function deleteNoteFile(note) {
+      if (!dirHandle || !(await ensurePermission())) return;
+      try {
+        const parentDir = await getParentDirHandle(note);
+        if (!parentDir) return;
+        const filename = sanitizeFilename(note.title || "Untitled") + ".md";
+        await parentDir.removeEntry(filename).catch(() => {});
+        try {
+          await parentDir.removeEntry(sanitizeFilename(note.title || "Untitled"), { recursive: true });
+        } catch (_) {}
+      } catch (err) {
+        console.warn("Could not delete file", err);
+      }
+    }
+
+    async function loadFromFolder() {
+      if (!dirHandle || !(await ensurePermission())) return;
+      notes = [];
+      await scanDir(dirHandle, null);
+      renderNotesList();
+      if (notes.length > 0) {
+        openNote(notes[0].id);
+      } else {
+        currentId = null;
+        document.getElementById("emptyState").style.display = "flex";
+        document.getElementById("toolbar").style.display = "none";
+        document.getElementById("editorContent").style.display = "none";
+      }
+    }
+
+    async function scanDir(dir, parentId) {
+      const entries = [];
+      for await (const entry of dir.values()) entries.push(entry);
+
+      for (const entry of entries) {
+        if (entry.kind === "file" && entry.name.endsWith(".md")) {
+          try {
+            const file = await entry.getFile();
+            const text = await file.text();
+            const { title, body } = parseMdFile(text, entry.name);
+            notes.push({
+              id: uid(),
+              title,
+              content: markdownToHtml(body),
+              parentId,
+              collapsed: false,
+              order: notes.filter(n => n.parentId === parentId).length,
+              createdAt: file.lastModified,
+              updatedAt: file.lastModified,
+              _filename: entry.name
+            });
+          } catch (e) {
+            console.warn("Skip file", entry.name, e);
+          }
+        }
+      }
+
+      for (const entry of entries) {
+        if (entry.kind === "directory") {
+          const matching = notes.find(n =>
+            n.parentId === parentId &&
+            sanitizeFilename(n.title || "Untitled") === entry.name
+          );
+          const folderParentId = matching ? matching.id : parentId;
+          await scanDir(entry, folderParentId);
+        }
+      }
+    }
+
+    function parseMdFile(text, filename) {
+      const lines = text.replace(/\r\n/g, "\n").split("\n");
+      let title = filename.replace(/\.md$/i, "");
+      let bodyStart = 0;
+      if (lines[0] && /^#\s+/.test(lines[0])) {
+        title = lines[0].replace(/^#\s+/, "").trim();
+        bodyStart = 1;
+        while (bodyStart < lines.length && lines[bodyStart].trim() === "") bodyStart++;
+      }
+      return { title, body: lines.slice(bodyStart).join("\n").trim() };
+    }
+
+    // ---------- Tree UI ----------
+    function getChildren(parentId) {
+      return notes.filter(n => n.parentId === parentId).sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+    function getNote(id) { return notes.find(n => n.id === id); }
+    function hasChildren(id) { return notes.some(n => n.parentId === id); }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function noteMatchesSearch(note, q) {
+      if (!q) return true;
+      const title = (note.title || "").toLowerCase();
+      // Strip HTML tags for content search
+      const tmp = document.createElement("div");
+      tmp.innerHTML = note.content || "";
+      const body = (tmp.textContent || tmp.innerText || "").toLowerCase();
+      return title.includes(q) || body.includes(q);
+    }
+
+    // Returns set of note ids that should be visible (match or ancestor of match)
+    function getSearchVisibleIds(q) {
+      if (!q) return null; // null = show all
+      const matched = new Set();
+      notes.forEach(n => {
+        if (noteMatchesSearch(n, q)) matched.add(n.id);
+      });
+      // Include all ancestors so path to match is visible
+      const visible = new Set(matched);
+      matched.forEach(id => {
+        let n = getNote(id);
+        while (n && n.parentId) {
+          visible.add(n.parentId);
+          n = getNote(n.parentId);
+        }
+      });
+      return visible;
+    }
+
+    function renderTree(parentId = null, visibleIds = null) {
+      const children = getChildren(parentId);
+      if (!children.length) return "";
+      let html = "";
+      children.forEach((note, idx) => {
+        if (visibleIds && !visibleIds.has(note.id)) return;
+
+        const isCollapsed = searchQuery
+          ? false  // expand all while searching
+          : (note.collapsed === true);
+        const hasKids = hasChildren(note.id);
+        const isActive = note.id === currentId;
+        const canUp = idx > 0;
+        const canDown = idx < children.length - 1;
+
+        html += `<div class="tree-item" data-note-id="${note.id}">`;
+        html += `<div class="tree-row ${isActive ? "active" : ""}">`;
+        html += `<span class="toggle ${hasKids ? (isCollapsed ? "collapsed" : "") : "hidden"}" data-toggle="${note.id}">${hasKids ? "▼" : ""}</span>`;
+        html += `<span class="tree-title" data-open="${note.id}">${escapeHtml(note.title || "Untitled")}</span>`;
+        html += `<div class="tree-actions">`;
+        if (canUp) html += `<button class="btn-move" title="Move up" data-move="${note.id}" data-dir="up">↑</button>`;
+        if (canDown) html += `<button class="btn-move" title="Move down" data-move="${note.id}" data-dir="down">↓</button>`;
+        html += `<button title="Add sub-page" data-add="${note.id}">＋</button>`;
+        html += `<button class="btn-del" title="Delete" data-del="${note.id}">×</button>`;
+        html += `</div></div>`;
+        if (hasKids) {
+          html += `<div class="children ${isCollapsed ? "collapsed" : ""}">${renderTree(note.id, visibleIds)}</div>`;
+        }
+        html += `</div>`;
+      });
+      return html;
+    }
+
+    function renderNotesList() {
+      const list = document.getElementById("notesList");
+      const q = searchQuery.trim().toLowerCase();
+      const visibleIds = getSearchVisibleIds(q);
+      const treeHtml = renderTree(null, visibleIds);
+
+      if (!treeHtml) {
+        list.innerHTML = q
+          ? `<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center;">No matching pages</div>`
+          : `<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center;">No pages yet.<br>Click ＋ to create one.</div>`;
+      } else {
+        list.innerHTML = treeHtml;
+      }
+
+      list.querySelectorAll("[data-open]").forEach(el => {
+        el.onclick = e => { e.stopPropagation(); openNote(el.dataset.open); };
+      });
+      list.querySelectorAll("[data-toggle]").forEach(el => {
+        el.onclick = e => { e.stopPropagation(); toggleCollapse(el.dataset.toggle); };
+      });
+      list.querySelectorAll("[data-add]").forEach(el => {
+        el.onclick = e => { e.stopPropagation(); createNote(el.dataset.add); };
+      });
+      list.querySelectorAll("[data-del]").forEach(el => {
+        el.onclick = e => { e.stopPropagation(); deleteNote(el.dataset.del); };
+      });
+      list.querySelectorAll("[data-move]").forEach(el => {
+        el.onclick = e => {
+          e.stopPropagation();
+          moveNote(el.dataset.move, el.dataset.dir);
+        };
+      });
+    }
+
+    function moveNote(id, dir) {
+      const note = getNote(id);
+      if (!note) return;
+      const siblings = getChildren(note.parentId);
+      const idx = siblings.findIndex(n => n.id === id);
+      if (idx < 0) return;
+
+      const swapIdx = dir === "up" ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= siblings.length) return;
+
+      // Swap order values
+      const a = siblings[idx];
+      const b = siblings[swapIdx];
+      const tmp = a.order;
+      a.order = b.order;
+      b.order = tmp;
+
+      // If orders were equal, force re-number
+      if (a.order === b.order) {
+        siblings.forEach((n, i) => { n.order = i; });
+      }
+
+      renderNotesList();
+      // Persist order by re-saving both (optional but keeps consistency)
+      saveNoteToFile(a);
+      saveNoteToFile(b);
+    }
+
+    // ---------- Core actions ----------
+    function openNote(id) {
+      const note = getNote(id);
+      if (!note) return;
+      currentId = id;
+      document.getElementById("emptyState").style.display = "none";
+      document.getElementById("toolbar").style.display = "flex";
+      document.getElementById("editorContent").style.display = "block";
+      document.getElementById("titleInput").value = note.title || "";
+      document.getElementById("editor").innerHTML = note.content || "";
+      wrapExistingImages();
+      clearImageSelection();
+      renderNotesList();
+    }
+
+    async function createNote(parentId = null) {
+      if (!dirHandle) { showStatus("Please select a folder first", "err"); return; }
+      const id = uid();
+      const note = {
+        id, title: "Untitled", content: "",
+        parentId, collapsed: false,
+        order: getChildren(parentId).length,
+        createdAt: Date.now(), updatedAt: Date.now()
+      };
+      notes.push(note);
+      if (parentId) {
+        const parent = getNote(parentId);
+        if (parent) parent.collapsed = false;
+      }
+      await saveNoteToFile(note);
+      openNote(id);
+      document.getElementById("titleInput").focus();
+      document.getElementById("titleInput").select();
+    }
+
+    async function deleteNote(id) {
+      const note = getNote(id);
+      if (!note) return;
+      function countDescendants(pid) {
+        let c = 0;
+        getChildren(pid).forEach(ch => { c += 1 + countDescendants(ch.id); });
+        return c;
+      }
+      const desc = countDescendants(id);
+      const msg = desc > 0
+        ? `Delete this page and its ${desc} sub-page(s)? Markdown files will also be removed.`
+        : "Delete this page? The Markdown file will also be removed.";
+      if (!confirm(msg)) return;
+
+      const toRemove = [];
+      (function collect(pid) {
+        toRemove.push(pid);
+        getChildren(pid).forEach(c => collect(c.id));
+      })(id);
+
+      for (const nid of toRemove.reverse()) {
+        const n = getNote(nid);
+        if (n) await deleteNoteFile(n);
+      }
+      notes = notes.filter(n => !toRemove.includes(n.id));
+
+      if (currentId && toRemove.includes(currentId)) {
+        currentId = null;
+        document.getElementById("emptyState").style.display = "flex";
+        document.getElementById("toolbar").style.display = "none";
+        document.getElementById("editorContent").style.display = "none";
+      }
+      renderNotesList();
+    }
+
+    function toggleCollapse(id) {
+      const note = getNote(id);
+      if (!note) return;
+      note.collapsed = !note.collapsed;
+      renderNotesList();
+    }
+
+    function scheduleSave() {
+      if (!currentId) return;
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        const note = getNote(currentId);
+        if (!note) return;
+        note.title = document.getElementById("titleInput").value;
+        note.content = document.getElementById("editor").innerHTML;
+        note.updatedAt = Date.now();
+        await saveNoteToFile(note);
+        renderNotesList();
+      }, 700);
+    }
+
+    // ---------- Shortcuts ----------
+    function getCurrentBlock() {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return null;
+      let node = sel.anchorNode;
+      if (node.nodeType === 3) node = node.parentNode;
+      while (node && node !== document.getElementById("editor")) {
+        if (["P","DIV","H1","H2","H3","H4","LI","BLOCKQUOTE"].includes(node.nodeName)) return node;
+        node = node.parentNode;
+      }
+      return null;
+    }
+
+    function placeCaret(el) {
+      const range = document.createRange();
+      const sel = window.getSelection();
+      range.selectNodeContents(el);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    function handleMarkdownShortcut(e) {
+      if (e.key !== " ") return;
+      const block = getCurrentBlock();
+      if (!block) return;
+      const text = (block.textContent || "").trimEnd();
+      const map = [
+        { re: /^#$/, tag: "h1" },
+        { re: /^##$/, tag: "h2" },
+        { re: /^###$/, tag: "h3" },
+        { re: /^>$/, tag: "blockquote" },
+        { re: /^-$/, list: "ul" },
+        { re: /^\*$/, list: "ul" },
+        { re: /^\d+\.$/, list: "ol" },
+      ];
+      for (const sc of map) {
+        if (sc.re.test(text)) {
+          e.preventDefault();
+          if (sc.list) {
+            document.execCommand(sc.list === "ul" ? "insertUnorderedList" : "insertOrderedList");
+            const li = getCurrentBlock();
+            if (li && li.nodeName === "LI") { li.textContent = ""; placeCaret(li); }
+          } else {
+            document.execCommand("formatBlock", false, sc.tag);
+            const nb = getCurrentBlock();
+            if (nb) { nb.textContent = ""; placeCaret(nb); }
+          }
+          scheduleSave();
+          return;
+        }
+      }
+    }
+
+    // ---------- Image resize ----------
+    function wrapExistingImages() {
+      document.getElementById("editor").querySelectorAll("img").forEach(img => {
+        if (img.parentElement?.classList.contains("img-wrapper")) return;
+        const wrapper = document.createElement("div");
+        wrapper.className = "img-wrapper";
+        wrapper.contentEditable = "false";
+        img.parentNode.insertBefore(wrapper, img);
+        wrapper.appendChild(img);
+        const handle = document.createElement("div");
+        handle.className = "resize-handle";
+        wrapper.appendChild(handle);
+      });
+    }
+
+    function clearImageSelection() {
+      document.querySelectorAll(".img-wrapper.selected").forEach(w => w.classList.remove("selected"));
+      selectedImgWrapper = null;
+    }
+
+    function selectImage(wrapper) {
+      clearImageSelection();
+      wrapper.classList.add("selected");
+      selectedImgWrapper = wrapper;
+    }
+
+    document.getElementById("editor").addEventListener("click", e => {
+      const wrapper = e.target.closest(".img-wrapper");
+      if (wrapper) {
+        e.preventDefault(); e.stopPropagation();
+        selectImage(wrapper);
+      } else if (!e.target.classList.contains("resize-handle")) {
+        clearImageSelection();
+      }
+    });
+
+    document.addEventListener("mousedown", e => {
+      if (!e.target.classList.contains("resize-handle")) return;
+      e.preventDefault(); e.stopPropagation();
+      const wrapper = e.target.closest(".img-wrapper");
+      if (!wrapper) return;
+      isResizing = true;
+      selectedImgWrapper = wrapper;
+      resizeStartX = e.clientX;
+      resizeStartWidth = wrapper.querySelector("img").offsetWidth;
+      document.body.style.cursor = "nwse-resize";
+      document.body.style.userSelect = "none";
+    });
+
+    document.addEventListener("mousemove", e => {
+      if (!isResizing || !selectedImgWrapper) return;
+      const img = selectedImgWrapper.querySelector("img");
+      let w = Math.max(60, resizeStartWidth + (e.clientX - resizeStartX));
+      w = Math.min(w, document.getElementById("editor").clientWidth - 20);
+      img.style.width = w + "px";
+      img.style.height = "auto";
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (isResizing) {
+        isResizing = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        scheduleSave();
+      }
+    });
+
+    // ---------- Table ----------
+    let activeTable = null;
+
+    function insertTable() {
+      const html = `<table><tbody>
+        <tr><th><br></th><th><br></th><th><br></th></tr>
+        <tr><td><br></td><td><br></td><td><br></td></tr>
+        <tr><td><br></td><td><br></td><td><br></td></tr>
+      </tbody></table><p><br></p>`;
+      document.getElementById("editor").focus();
+      document.execCommand("insertHTML", false, html);
+      scheduleSave();
+    }
+
+    function getTableFromSelection() {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return null;
+      let node = sel.anchorNode;
+      if (node.nodeType === 3) node = node.parentNode;
+      return node.closest ? node.closest("table") : null;
+    }
+
+    function showTableToolbar(table) {
+      activeTable = table;
+      const tb = document.getElementById("tableToolbar");
+      const rect = table.getBoundingClientRect();
+      const mainRect = document.querySelector(".main").getBoundingClientRect();
+      tb.style.top = (rect.top - mainRect.top - 36) + "px";
+      tb.style.left = Math.max(8, rect.left - mainRect.left) + "px";
+      tb.classList.add("show");
+    }
+
+    function hideTableToolbar() {
+      activeTable = null;
+      document.getElementById("tableToolbar").classList.remove("show");
+    }
+
+    function tableAddRow() {
+      if (!activeTable) return;
+      const tbody = activeTable.querySelector("tbody") || activeTable;
+      const cols = tbody.rows[0] ? tbody.rows[0].cells.length : 1;
+      const tr = document.createElement("tr");
+      for (let i = 0; i < cols; i++) {
+        const td = document.createElement("td");
+        td.innerHTML = "<br>";
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+      scheduleSave();
+    }
+
+    function tableDelRow() {
+      if (!activeTable) return;
+      const tbody = activeTable.querySelector("tbody") || activeTable;
+      if (tbody.rows.length <= 1) return; // keep at least one row
+      // Prefer deleting the row that contains the selection
+      const sel = window.getSelection();
+      let row = null;
+      if (sel.rangeCount) {
+        let node = sel.anchorNode;
+        if (node.nodeType === 3) node = node.parentNode;
+        row = node.closest && node.closest("tr");
+      }
+      if (row && row.parentNode === tbody) {
+        row.remove();
+      } else {
+        tbody.deleteRow(tbody.rows.length - 1);
+      }
+      scheduleSave();
+    }
+
+    function tableAddCol() {
+      if (!activeTable) return;
+      const tbody = activeTable.querySelector("tbody") || activeTable;
+      Array.from(tbody.rows).forEach((row, ri) => {
+        const cell = document.createElement(ri === 0 && row.cells[0]?.tagName === "TH" ? "th" : "td");
+        cell.innerHTML = "<br>";
+        row.appendChild(cell);
+      });
+      scheduleSave();
+    }
+
+    function tableDelCol() {
+      if (!activeTable) return;
+      const tbody = activeTable.querySelector("tbody") || activeTable;
+      if (!tbody.rows[0] || tbody.rows[0].cells.length <= 1) return;
+      // Prefer deleting the column of the selected cell
+      let colIdx = -1;
+      const sel = window.getSelection();
+      if (sel.rangeCount) {
+        let node = sel.anchorNode;
+        if (node.nodeType === 3) node = node.parentNode;
+        const cell = node.closest && node.closest("td,th");
+        if (cell) colIdx = cell.cellIndex;
+      }
+      if (colIdx < 0) colIdx = tbody.rows[0].cells.length - 1;
+      Array.from(tbody.rows).forEach(row => {
+        if (row.cells[colIdx]) row.deleteCell(colIdx);
+      });
+      scheduleSave();
+    }
+
+    document.getElementById("tableToolbar").addEventListener("click", e => {
+      const btn = e.target.closest("button[data-table]");
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const action = btn.dataset.table;
+      if (action === "add-row") tableAddRow();
+      else if (action === "del-row") tableDelRow();
+      else if (action === "add-col") tableAddCol();
+      else if (action === "del-col") tableDelCol();
+    });
+
+    // Show/hide table toolbar when selection changes
+    document.getElementById("editor").addEventListener("mouseup", () => {
+      setTimeout(() => {
+        const table = getTableFromSelection();
+        if (table) showTableToolbar(table);
+        else hideTableToolbar();
+      }, 10);
+    });
+    document.getElementById("editor").addEventListener("keyup", () => {
+      const table = getTableFromSelection();
+      if (table) showTableToolbar(table);
+      else hideTableToolbar();
+    });
+    document.addEventListener("click", e => {
+      if (!e.target.closest("table") && !e.target.closest("#tableToolbar")) {
+        hideTableToolbar();
+      }
+    });
+
+    // ---------- Toolbar ----------
+    document.getElementById("toolbar").addEventListener("click", e => {
+      const btn = e.target.closest("button[data-cmd]");
+      if (!btn) return;
+      e.preventDefault();
+      document.getElementById("editor").focus();
+      const cmd = btn.dataset.cmd;
+      const value = btn.dataset.value || null;
+      if (cmd === "formatBlock") document.execCommand("formatBlock", false, value);
+      else document.execCommand(cmd, false, value);
+      scheduleSave();
+    });
+
+    document.getElementById("btnTable").addEventListener("click", e => {
+      e.preventDefault();
+      insertTable();
+    });
+
+    document.getElementById("imageInput").addEventListener("change", function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        document.getElementById("editor").focus();
+        const wrapper = document.createElement("div");
+        wrapper.className = "img-wrapper";
+        wrapper.contentEditable = "false";
+        const img = document.createElement("img");
+        img.src = ev.target.result;
+        img.alt = file.name.replace(/\.[^/.]+$/, "");
+        const handle = document.createElement("div");
+        handle.className = "resize-handle";
+        wrapper.appendChild(img);
+        wrapper.appendChild(handle);
+        const sel = window.getSelection();
+        if (sel.rangeCount) {
+          const range = sel.getRangeAt(0);
+          range.deleteContents();
+          range.insertNode(wrapper);
+          range.setStartAfter(wrapper);
+          range.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } else {
+          document.getElementById("editor").appendChild(wrapper);
+        }
+        const p = document.createElement("p");
+        p.innerHTML = "<br>";
+        wrapper.after(p);
+        scheduleSave();
+      };
+      reader.readAsDataURL(file);
+      e.target.value = "";
+    });
+
+    // ---------- Sidebar resize ----------
+    (function initSidebarResize() {
+      const sidebar = document.querySelector(".sidebar");
+      const resizer = document.getElementById("sidebarResizer");
+      const saved = localStorage.getItem("notion-sidebar-width");
+      if (saved) {
+        const w = parseInt(saved, 10);
+        if (w >= 180 && w <= window.innerWidth * 0.6) {
+          sidebar.style.width = w + "px";
+        }
+      }
+
+      let dragging = false;
+      resizer.addEventListener("mousedown", e => {
+        e.preventDefault();
+        dragging = true;
+        resizer.classList.add("dragging");
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+      });
+      document.addEventListener("mousemove", e => {
+        if (!dragging) return;
+        const w = Math.min(Math.max(e.clientX, 180), window.innerWidth * 0.6);
+        sidebar.style.width = w + "px";
+      });
+      document.addEventListener("mouseup", () => {
+        if (!dragging) return;
+        dragging = false;
+        resizer.classList.remove("dragging");
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        localStorage.setItem("notion-sidebar-width", parseInt(sidebar.style.width, 10) || 280);
+      });
+    })();
+
+    // ---------- Table Tab navigation ----------
+    function handleTableTab(e) {
+      if (e.key !== "Tab") return false;
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return false;
+      let node = sel.anchorNode;
+      if (node.nodeType === 3) node = node.parentNode;
+      const cell = node.closest && node.closest("td, th");
+      if (!cell) return false;
+      const table = cell.closest("table");
+      if (!table) return false;
+
+      e.preventDefault();
+      const cells = Array.from(table.querySelectorAll("td, th"));
+      const idx = cells.indexOf(cell);
+      if (idx < 0) return true;
+
+      let nextIdx = e.shiftKey ? idx - 1 : idx + 1;
+      if (nextIdx < 0) nextIdx = cells.length - 1;
+      if (nextIdx >= cells.length) nextIdx = 0;
+
+      const next = cells[nextIdx];
+      // Place caret inside the cell
+      const range = document.createRange();
+      range.selectNodeContents(next);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      // Keep table toolbar in sync
+      if (typeof showTableToolbar === "function") showTableToolbar(table);
+      return true;
+    }
+
+    // ---------- Events ----------
+    document.getElementById("btnChooseFolder").addEventListener("click", chooseFolder);
+    document.getElementById("btnChooseFolderMain").addEventListener("click", chooseFolder);
+    document.getElementById("btnNewRoot").addEventListener("click", () => createNote(null));
+    document.getElementById("titleInput").addEventListener("input", scheduleSave);
+
+    document.getElementById("searchInput").addEventListener("input", e => {
+      searchQuery = e.target.value || "";
+      renderNotesList();
+    });
+
+    const editorEl = document.getElementById("editor");
+    editorEl.addEventListener("input", scheduleSave);
+    editorEl.addEventListener("keydown", e => {
+      if (handleTableTab(e)) return;
+      handleMarkdownShortcut(e);
+    });
+    editorEl.addEventListener("input", () => setTimeout(wrapExistingImages, 10));
+
+    document.addEventListener("keydown", e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+        e.preventDefault();
+        if (dirHandle) createNote(null);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        scheduleSave();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        document.getElementById("searchInput").focus();
+      }
+    });
+
+    // ---------- Init ----------
+    if (!window.showDirectoryPicker) {
+      document.getElementById("noFolderOverlay").innerHTML = `
+        <h2>Browser not supported</h2>
+        <p>File System Access API is required.<br>
+        Please open this file in <strong>Chrome</strong> or <strong>Edge</strong>.</p>`;
+      renderNotesList();
+    } else {
+      tryRestoreFolder().then(ok => {
+        if (!ok) renderNotesList();
+      }).catch(() => renderNotesList());
+    }
+  </script>
+</body>
+</html>
