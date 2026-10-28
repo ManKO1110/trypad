@@ -24,7 +24,7 @@ Notes are saved as **Markdown (`.md`) files** on your local disk, with a folder 
 
 ## Usage
 
-1. Open `index.html` in Chrome or Edge  
+1. Open **`trypad.html`** in Chrome or Edge  
 2. Click **Select Folder…** and choose a folder for your notes  
 3. Create pages, write, insert images/tables  
 4. Use the **moon/sun button** (top-left) to switch light / dark mode  
@@ -34,7 +34,7 @@ Notes are saved as **Markdown (`.md`) files** on your local disk, with a folder 
 
 ```text
 TryPad/
-  index.html          ← this app (single file)
+  trypad.html         ← this app (single file)
   Notes/              ← select this folder in the app
     Welcome.md
     Projects.md
