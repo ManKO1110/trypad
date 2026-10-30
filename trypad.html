@@ -563,7 +563,7 @@
 <body>
   <aside class="sidebar">
     <div class="sidebar-header">
-      <span class="app-version" id="appVersion" title="TryPad version">v1.5</span>
+      <span class="app-version" id="appVersion" title="TryPad version">v1.6</span>
       <button type="button" class="theme-toggle" id="btnTheme" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
       <h1>📝 Pages</h1>
       <button class="btn-icon" id="btnNewRoot" title="New page" disabled>＋</button>
@@ -647,7 +647,7 @@
     let resizeStartX = 0;
     let resizeStartWidth = 0;
     let searchQuery = "";
-    const APP_VERSION = "v1.5";
+    const APP_VERSION = "v1.6";
 
     // ---------- IndexedDB: remember last folder ----------
     const IDB_NAME = "notion-notepad-db";
@@ -1305,9 +1305,13 @@
 
     async function createNote(parentId = null) {
       if (!dirHandle) { showStatus("Please select a folder first", "err"); return; }
+      const label = parentId ? "sub-page" : "page";
+      const name = window.prompt("Enter " + label + " name:", "");
+      if (name === null) return; // cancelled
+      const title = name.trim() || "Untitled";
       const id = uid();
       const note = {
-        id, title: "Untitled", content: "",
+        id, title, content: "",
         parentId, collapsed: false,
         order: getChildren(parentId).length,
         createdAt: Date.now(), updatedAt: Date.now()
@@ -1369,14 +1373,21 @@
       if (!currentId) return;
       clearTimeout(saveTimer);
       saveTimer = setTimeout(async () => {
-        const note = getNote(currentId);
-        if (!note) return;
-        note.title = document.getElementById("titleInput").value;
-        note.content = document.getElementById("editor").innerHTML;
-        note.updatedAt = Date.now();
-        await saveNoteToFile(note);
-        renderNotesList();
+        await saveNow(false);
       }, 3000);
+    }
+
+    async function saveNow(showMsg = true) {
+      if (!currentId) return;
+      clearTimeout(saveTimer);
+      const note = getNote(currentId);
+      if (!note) return;
+      note.title = document.getElementById("titleInput").value;
+      note.content = document.getElementById("editor").innerHTML;
+      note.updatedAt = Date.now();
+      await saveNoteToFile(note);
+      renderNotesList();
+      if (showMsg) showStatus("Saved · " + (note.title || "Untitled") + ".md", "ok");
     }
 
     // ---------- Shortcuts ----------
@@ -2157,19 +2168,21 @@
     editorEl.addEventListener("input", () => setTimeout(wrapExistingImages, 10));
 
     document.addEventListener("keydown", e => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+      const key = (e.key || "").toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && key === "n") {
         e.preventDefault();
         if (dirHandle) createNote(null);
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      if ((e.ctrlKey || e.metaKey) && key === "s") {
         e.preventDefault();
-        scheduleSave();
+        e.stopPropagation();
+        saveNow(true);
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+      if ((e.ctrlKey || e.metaKey) && key === "k") {
         e.preventDefault();
         document.getElementById("searchInput").focus();
       }
-    });
+    }, true);
 
 
     // ---------- Dark mode ----------
