@@ -114,6 +114,20 @@
     .btn-icon:hover { background: var(--hover); color: var(--text); }
     .btn-icon:disabled { opacity: 0.4; cursor: not-allowed; }
 
+    .app-version {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      background: var(--hover);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 5px;
+      letter-spacing: 0.02em;
+      flex-shrink: 0;
+      user-select: none;
+      line-height: 1.2;
+    }
+
     .theme-toggle {
       background: none;
       border: 1px solid var(--border);
@@ -549,6 +563,7 @@
 <body>
   <aside class="sidebar">
     <div class="sidebar-header">
+      <span class="app-version" id="appVersion" title="TryPad version">v1.5</span>
       <button type="button" class="theme-toggle" id="btnTheme" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
       <h1>📝 Pages</h1>
       <button class="btn-icon" id="btnNewRoot" title="New page" disabled>＋</button>
@@ -632,6 +647,7 @@
     let resizeStartX = 0;
     let resizeStartWidth = 0;
     let searchQuery = "";
+    const APP_VERSION = "v1.5";
 
     // ---------- IndexedDB: remember last folder ----------
     const IDB_NAME = "notion-notepad-db";
@@ -1360,7 +1376,7 @@
         note.updatedAt = Date.now();
         await saveNoteToFile(note);
         renderNotesList();
-      }, 700);
+      }, 3000);
     }
 
     // ---------- Shortcuts ----------
@@ -2158,6 +2174,8 @@
 
     // ---------- Dark mode ----------
     (function initTheme() {
+      const ver = document.getElementById("appVersion");
+      if (ver) ver.textContent = APP_VERSION;
       const btn = document.getElementById("btnTheme");
       const saved = localStorage.getItem("trypad-theme");
       const preferDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
