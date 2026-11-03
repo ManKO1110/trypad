@@ -563,7 +563,7 @@
 <body>
   <aside class="sidebar">
     <div class="sidebar-header">
-      <span class="app-version" id="appVersion" title="TryPad version">v1.6</span>
+      <span class="app-version" id="appVersion" title="TryPad version">v1.7</span>
       <button type="button" class="theme-toggle" id="btnTheme" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
       <h1>📝 Pages</h1>
       <button class="btn-icon" id="btnNewRoot" title="New page" disabled>＋</button>
@@ -647,7 +647,7 @@
     let resizeStartX = 0;
     let resizeStartWidth = 0;
     let searchQuery = "";
-    const APP_VERSION = "v1.6";
+    const APP_VERSION = "v1.7";
 
     // ---------- IndexedDB: remember last folder ----------
     const IDB_NAME = "notion-notepad-db";
@@ -948,6 +948,14 @@
         if (/^%%HTMLBIT\d+%%$/.test(t)) return t;
         return `<p>${block.replace(/\n/g, "<br>")}</p>`;
       }).join("\n");
+
+      // Final inline pass: catch any bold/italic/strike/code markers that
+      // survived earlier steps (e.g. inside paragraphs or mixed content).
+      text = text.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
+      text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      text = text.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
+      text = text.replace(/~~(.+?)~~/g, "<del>$1</del>");
+      text = text.replace(/`([^`]+)`/g, "<code>$1</code>");
 
       // Defensive cleanup: never show an internal placeholder to the user.
       text = text.replace(/%%HTMLBIT\d+%%/g, "");
