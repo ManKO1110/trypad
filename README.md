@@ -2,7 +2,7 @@
 
 A lightweight, offline **Notion-style notes app** that runs entirely in the browser (single HTML file).
 
-Notes are saved as **Markdown (`.md`) files** on your local disk. Page hierarchy is mirrored with folders.
+**v2.0** — Notes are saved as **HTML (`.html`) files** on your local disk. What you see is what is saved — no format loss on reopen. Page hierarchy is mirrored with folders.
 
 ## Features
 
@@ -16,6 +16,7 @@ Notes are saved as **Markdown (`.md`) files** on your local disk. Page hierarchy
 - Dark mode (🌙 / ☀️ toggle; preference remembered)
 - Local folder storage via File System Access API (Chrome / Edge)
 - Remembers last folder (one-click reconnect)
+- Perfect format fidelity (HTML storage, no Markdown conversion)
 
 ## Requirements
 
@@ -36,10 +37,17 @@ Notes are saved as **Markdown (`.md`) files** on your local disk. Page hierarchy
 TryPad/
   trypad.html         ← this app (single file)
   Notes/              ← select this folder in the app
-    Welcome.md
-    Projects.md
+    Welcome.html
+    Projects.html
     Projects/
-      Alpha.md
+      Alpha.html
+```
+
+Each `.html` file starts with a title comment:
+
+```html
+<!-- trypad-title: Page Name -->
+<p>Your content here…</p>
 ```
 
 ## Shortcuts
@@ -61,7 +69,7 @@ TryPad/
 
 - Everything stays on your computer
 - No server, no account, no cloud sync
-- Data = plain HTML files you can open with any editor
+- Data = HTML files you can open in any browser
 
 ## License
 
