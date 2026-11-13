@@ -61,7 +61,7 @@ TryPad/
 
 - Everything stays on your computer
 - No server, no account, no cloud sync
-- Data = plain Markdown files you can open with any editor
+- Data = plain HTML files you can open with any editor
 
 ## License
 

@@ -563,7 +563,7 @@
 <body>
   <aside class="sidebar">
     <div class="sidebar-header">
-      <span class="app-version" id="appVersion" title="TryPad version">v1.7</span>
+      <span class="app-version" id="appVersion" title="TryPad version">v2.0</span>
       <button type="button" class="theme-toggle" id="btnTheme" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
       <h1>📝 Pages</h1>
       <button class="btn-icon" id="btnNewRoot" title="New page" disabled>＋</button>
@@ -615,7 +615,7 @@
     <div class="no-folder-overlay" id="noFolderOverlay">
       <h2 id="overlayTitle">Choose a folder to store your notes</h2>
       <p id="overlayDesc">
-        Each page is saved as a Markdown (<code>.md</code>) file on your computer.<br>
+        Each page is saved as an HTML (<code>.html</code>) file on your computer.<br>
         Sub-pages become folders inside the parent page.<br><br>
         Use <strong>Chrome</strong> or <strong>Edge</strong>
       </p>
@@ -647,7 +647,7 @@
     let resizeStartX = 0;
     let resizeStartWidth = 0;
     let searchQuery = "";
-    const APP_VERSION = "v1.7";
+    const APP_VERSION = "v2.0";
 
     // ---------- IndexedDB: remember last folder ----------
     const IDB_NAME = "notion-notepad-db";
@@ -1100,12 +1100,13 @@
       try {
         const parentDir = await getParentDirHandle(note);
         if (!parentDir) return;
-        const filename = sanitizeFilename(note.title || "Untitled") + ".md";
+        const filename = sanitizeFilename(note.title || "Untitled") + ".html";
         const fileHandle = await parentDir.getFileHandle(filename, { create: true });
         const writable = await fileHandle.createWritable();
-        const bodyMd = htmlToMarkdown(note.content || "");
-        const fullMd = `# ${note.title || "Untitled"}\n\n${bodyMd}`;
-        await writable.write(fullMd);
+        const title = note.title || "Untitled";
+        const body = note.content || "";
+        const full = `<!-- trypad-title: ${title.replace(/--/g, "-")} -->\n${body}`;
+        await writable.write(full);
         await writable.close();
         note._filename = filename;
         showStatus("Saved · " + filename, "ok");
@@ -1120,7 +1121,7 @@
       try {
         const parentDir = await getParentDirHandle(note);
         if (!parentDir) return;
-        const filename = sanitizeFilename(note.title || "Untitled") + ".md";
+        const filename = sanitizeFilename(note.title || "Untitled") + ".html";
         await parentDir.removeEntry(filename).catch(() => {});
         try {
           await parentDir.removeEntry(sanitizeFilename(note.title || "Untitled"), { recursive: true });
@@ -1150,15 +1151,15 @@
       for await (const entry of dir.values()) entries.push(entry);
 
       for (const entry of entries) {
-        if (entry.kind === "file" && entry.name.endsWith(".md")) {
+        if (entry.kind === "file" && entry.name.endsWith(".html")) {
           try {
             const file = await entry.getFile();
             const text = await file.text();
-            const { title, body } = parseMdFile(text, entry.name);
+            const { title, body } = parseHtmlFile(text, entry.name);
             notes.push({
               id: uid(),
               title,
-              content: markdownToHtml(body),
+              content: body,
               parentId,
               collapsed: false,
               order: notes.filter(n => n.parentId === parentId).length,
@@ -1184,16 +1185,15 @@
       }
     }
 
-    function parseMdFile(text, filename) {
-      const lines = text.replace(/\r\n/g, "\n").split("\n");
-      let title = filename.replace(/\.md$/i, "");
-      let bodyStart = 0;
-      if (lines[0] && /^#\s+/.test(lines[0])) {
-        title = lines[0].replace(/^#\s+/, "").trim();
-        bodyStart = 1;
-        while (bodyStart < lines.length && lines[bodyStart].trim() === "") bodyStart++;
+    function parseHtmlFile(text, filename) {
+      const m = text.match(/^<!-- trypad-title: (.*?) -->\s*/);
+      let title = filename.replace(/\.html$/i, "");
+      let body = text;
+      if (m) {
+        title = m[1].trim() || title;
+        body = text.slice(m[0].length);
       }
-      return { title, body: lines.slice(bodyStart).join("\n").trim() };
+      return { title, body: body.trim() };
     }
 
     // ---------- Tree UI ----------
@@ -1395,7 +1395,7 @@
       note.updatedAt = Date.now();
       await saveNoteToFile(note);
       renderNotesList();
-      if (showMsg) showStatus("Saved · " + (note.title || "Untitled") + ".md", "ok");
+      if (showMsg) showStatus("Saved · " + (note.title || "Untitled") + ".html", "ok");
     }
 
     // ---------- Shortcuts ----------
