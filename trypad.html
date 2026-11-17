@@ -563,7 +563,7 @@
 <body>
   <aside class="sidebar">
     <div class="sidebar-header">
-      <span class="app-version" id="appVersion" title="TryPad version">v2.0</span>
+      <span class="app-version" id="appVersion" title="TryPad version">v2.1</span>
       <button type="button" class="theme-toggle" id="btnTheme" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
       <h1>📝 Pages</h1>
       <button class="btn-icon" id="btnNewRoot" title="New page" disabled>＋</button>
@@ -587,6 +587,9 @@
       <button type="button" data-cmd="strikeThrough" title="Strikethrough">S̶</button>
       <button type="button" id="btnCodeBlock" title="Code block">{ }</button>
       <button type="button" id="btnLink" title="Hyperlink">🔗</button>
+      <div class="divider"></div>
+      <label title="Font color" style="gap:2px;">A<input type="color" id="fontColor" value="#e03e3e" title="Font color" /></label>
+      <label title="Highlight" style="gap:2px;">🖊<input type="color" id="highlightColor" value="#fff3b0" title="Highlight" /></label>
       <div class="divider"></div>
       <button type="button" data-cmd="formatBlock" data-value="h1">H1</button>
       <button type="button" data-cmd="formatBlock" data-value="h2">H2</button>
@@ -647,7 +650,7 @@
     let resizeStartX = 0;
     let resizeStartWidth = 0;
     let searchQuery = "";
-    const APP_VERSION = "v2.0";
+    const APP_VERSION = "v2.1";
 
     // ---------- IndexedDB: remember last folder ----------
     const IDB_NAME = "notion-notepad-db";
@@ -2038,6 +2041,23 @@
     document.getElementById("btnLink").addEventListener("click", e => {
       e.preventDefault();
       insertHyperlink();
+    });
+
+    function applyColor(cmd, color) {
+      restoreEditorSelection();
+      document.execCommand(cmd, false, color);
+      scheduleSave();
+    }
+
+    document.getElementById("fontColor").addEventListener("input", e => {
+      applyColor("foreColor", e.target.value);
+    });
+    document.getElementById("highlightColor").addEventListener("input", e => {
+      // hiliteColor works in most browsers; fall back to backColor
+      restoreEditorSelection();
+      const ok = document.execCommand("hiliteColor", false, e.target.value);
+      if (!ok) document.execCommand("backColor", false, e.target.value);
+      scheduleSave();
     });
 
     document.getElementById("btnTable").addEventListener("click", e => {
