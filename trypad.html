@@ -563,7 +563,7 @@
 <body>
   <aside class="sidebar">
     <div class="sidebar-header">
-      <span class="app-version" id="appVersion" title="TryPad version">v2.1</span>
+      <span class="app-version" id="appVersion" title="TryPad version">v2.2</span>
       <button type="button" class="theme-toggle" id="btnTheme" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
       <h1>📝 Pages</h1>
       <button class="btn-icon" id="btnNewRoot" title="New page" disabled>＋</button>
@@ -650,7 +650,7 @@
     let resizeStartX = 0;
     let resizeStartWidth = 0;
     let searchQuery = "";
-    const APP_VERSION = "v2.1";
+    const APP_VERSION = "v2.2";
 
     // ---------- IndexedDB: remember last folder ----------
     const IDB_NAME = "notion-notepad-db";
@@ -1877,6 +1877,8 @@
     // Otherwise the browser moves focus away from contenteditable and commands
     // such as bold/italic/underline have no selection to format.
     document.getElementById("toolbar").addEventListener("mousedown", e => {
+      // Don't block color inputs — they need the native picker
+      if (e.target.closest("input[type=color]")) return;
       if (e.target.closest("button, label")) e.preventDefault();
     });
 
@@ -2043,21 +2045,51 @@
       insertHyperlink();
     });
 
-    function applyColor(cmd, color) {
+    function wrapSelectionWithStyle(styleProp, value) {
+      const sel = restoreEditorSelection();
+      if (!sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+      if (range.collapsed) return;
+      const span = document.createElement("span");
+      span.style[styleProp] = value;
+      try {
+        range.surroundContents(span);
+      } catch (err) {
+        // Selection crosses nodes — extract and wrap
+        const frag = range.extractContents();
+        span.appendChild(frag);
+        range.insertNode(span);
+      }
+      sel.removeAllRanges();
+      const nr = document.createRange();
+      nr.selectNodeContents(span);
+      sel.addRange(nr);
+    }
+
+    function applyFontColor(color) {
       restoreEditorSelection();
-      document.execCommand(cmd, false, color);
+      const ok = document.execCommand("foreColor", false, color);
+      if (!ok) wrapSelectionWithStyle("color", color);
       scheduleSave();
     }
 
-    document.getElementById("fontColor").addEventListener("input", e => {
-      applyColor("foreColor", e.target.value);
-    });
-    document.getElementById("highlightColor").addEventListener("input", e => {
-      // hiliteColor works in most browsers; fall back to backColor
+    function applyHighlight(color) {
       restoreEditorSelection();
-      const ok = document.execCommand("hiliteColor", false, e.target.value);
-      if (!ok) document.execCommand("backColor", false, e.target.value);
+      let ok = document.execCommand("hiliteColor", false, color);
+      if (!ok) ok = document.execCommand("backColor", false, color);
+      if (!ok) wrapSelectionWithStyle("backgroundColor", color);
       scheduleSave();
+    }
+
+    // Capture selection before the color picker steals focus
+    document.getElementById("fontColor").addEventListener("mousedown", rememberEditorSelection);
+    document.getElementById("highlightColor").addEventListener("mousedown", rememberEditorSelection);
+
+    document.getElementById("fontColor").addEventListener("change", e => {
+      applyFontColor(e.target.value);
+    });
+    document.getElementById("highlightColor").addEventListener("change", e => {
+      applyHighlight(e.target.value);
     });
 
     document.getElementById("btnTable").addEventListener("click", e => {
